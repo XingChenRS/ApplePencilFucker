@@ -1,5 +1,9 @@
 TARGET := iphone:clang:16.5:14.0
-ARCHS = arm64e arm64
+# arm64 only: the Linux toolchain emits an arm64e slice whose ABI does not match
+# iOS 16 (ld warns "incompatible arm64e ABI compiler"), and loading that slice
+# into accessoryd dies with SIGBUS inside the tweak. arm64 slices run fine on
+# arm64e hardware.
+ARCHS = arm64
 THEOS_PACKAGE_SCHEME = rootless
 
 include $(THEOS)/makefiles/common.mk
