@@ -16,15 +16,15 @@
 //
 //  When the attached accessory is an Apple Pencil (model A1603) and this returns
 //  NO, accessoryd shows "Accessory Not Supported" and skips the pairing start
-//  (iAP2BLEPairing _startFeatureFromDevice, 0x10014E36C), which is the wired
-//  out-of-band handshake that hands the Bluetooth link key to the iPad — the
-//  reason a manually paired pencil loses its link key on every disconnect.
+//  (ACCBLEPairingServer accessoryBLEPairingAttached:, 0x10014E36C) — the
+//  handshake that hands the Bluetooth link key to the iPad, which is why a
+//  manually paired pencil loses its link key on every disconnect.
 //
-//  Both MobileGestalt keys are read exactly once in the whole daemon — and neither
-//  key exists in the on-disk MobileGestalt cache (both are hardware/runtime derived),
-//  so answering them in-process is the only way to change this decision. That is also
-//  why the hook is scoped to accessoryd instead of patching MobileGestalt itself, which
-//  would affect every process on the device.
+//  Both MobileGestalt keys are read exactly once in the whole daemon — and
+//  neither exists in the on-disk MobileGestalt cache (both are hardware/runtime
+//  derived), so answering them in-process is the only way to change this
+//  decision. That is also why the hook is scoped to accessoryd instead of
+//  patching MobileGestalt itself, which would affect every process.
 
 #import <Foundation/Foundation.h>
 #import <os/log.h>
@@ -35,18 +35,58 @@
 extern Boolean MGGetBoolAnswer(CFStringRef key);
 
 static os_log_t gLog;
+static CFStringRef gKeyPencilGate;   // obfuscated key: DeviceSupportsApplePencil
+static CFStringRef gKeyNinePin;      // DeviceSupports9Pin
+static int gCalls;
 
-static CFStringRef gKeyPencilGate;   // obfuscated MG key guarding the check
-static CFStringRef gKeyNinePin;      // "DeviceSupports9Pin"
+// Trailing diagnostics for the host daemon: it is started on demand and there is
+// no log(1) on iOS 16, so the interesting part of a failed attempt is written to
+// a file that can be read over SSH.
+static void pgnote(const char *fmt, ...)
+{
+    FILE *f = fopen("/tmp/PencilGen1Compat.log", "a");
+    if (!f) return;
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(f, fmt, ap);
+    va_end(ap);
+    fputc('\n', f);
+    fclose(f);
+}
+
+// Built lazily rather than in a constructor: with several constructors in one
+// image their relative order is up to the linker, and the hook must never run
+// before its comparison keys exist.
+static void pgInitKeys(void)
+{
+    if (!gKeyPencilGate)
+        gKeyPencilGate = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                   "yhHcB0iH0d1XzPO/CFd3ow",
+                                                   kCFStringEncodingUTF8);
+    if (!gKeyNinePin)
+        gKeyNinePin = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                "DeviceSupports9Pin",
+                                                kCFStringEncodingUTF8);
+}
 
 %hookf(Boolean, MGGetBoolAnswer, CFStringRef key)
 {
+    pgInitKeys();
+
+    if (gCalls < 32) {
+        gCalls++;
+        pgnote("call %d: key=%p gate=%p nine=%p", gCalls,
+               (void *)key, (void *)gKeyPencilGate, (void *)gKeyNinePin);
+    }
+
     if (key) {
         if (gKeyPencilGate && CFEqual(key, gKeyPencilGate)) {
-            os_log(gLog, "forcing %{public}@ -> true", key);
+            pgnote("-> forcing DeviceSupportsApplePencil = true");
+            os_log(gLog, "forcing DeviceSupportsApplePencil -> true");
             return true;
         }
         if (gKeyNinePin && CFEqual(key, gKeyNinePin)) {
+            pgnote("-> forcing DeviceSupports9Pin = true");
             os_log(gLog, "forcing DeviceSupports9Pin -> true");
             return true;
         }
@@ -66,10 +106,6 @@ static CFStringRef gKeyNinePin;      // "DeviceSupports9Pin"
         fprintf(beacon, "pid=%d\n", getpid());
         fclose(beacon);
     }
-
-    gKeyPencilGate = CFStringCreateWithCString(kCFAllocatorDefault,
-                                               "yhHcB0iH0d1XzPO/CFd3ow",
-                                               kCFStringEncodingUTF8);
-    gKeyNinePin = CFSTR("DeviceSupports9Pin");
+    pgnote("loaded into accessoryd (pid %d)", getpid());
     os_log(gLog, "loaded into accessoryd (pid %d)", getpid());
 }
