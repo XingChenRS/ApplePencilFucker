@@ -1,0 +1,52 @@
+name: build
+
+# Two ways to start a build:
+#   * Actions tab -> "Run workflow" (workflow_dispatch), any branch
+#   * push a commit whose message contains [build]
+# A plain push does NOT build, so CI minutes are only spent on purpose.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Skip ordinary pushes unless the commit message asks for a build.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[build]')
+    # The Linux toolchain the action downloads is built for Ubuntu 22.04.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Theos, its toolchain and the SDKs change rarely but are the slow part,
+      # so they are cached and only re-downloaded when the key changes.
+      - name: Cache Theos
+        id: theos
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/theos
+          key: theos-${{ runner.os }}-v1-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: |
+            theos-${{ runner.os }}-v1-
+
+      - name: Install Theos
+        uses: Randomblock1/theos-action@v1
+
+      - name: Build package
+        run: make -C tweak package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+
+      - name: Show package
+        run: ls -la tweak/packages/ && dpkg-deb -I tweak/packages/*.deb
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: PencilGen1Compat-${{ github.sha }}
+          path: tweak/packages/*.deb
+          if-no-files-found: error

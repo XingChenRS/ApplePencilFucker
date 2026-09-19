@@ -1,0 +1,3 @@
+# Keep line endings LF everywhere: the build runs on Linux, and CRLF in a
+# Makefile or shell script breaks Theos.
+* text=auto eol=lf

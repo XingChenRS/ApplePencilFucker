@@ -1,0 +1,23 @@
+# Forensic artifacts: pulled firmware, extracted dylibs, IDA databases and
+# device log archives. They are large and device specific — never publish them.
+analysis/
+.idamcp/
+
+# IDA databases and leftovers
+*.i64
+*.id0
+*.id1
+*.id2
+*.nam
+*.til
+*.idb
+
+# Scratch / logs
+*.log
+*.tar
+*.tgz
+*.zip
+
+# Python
+__pycache__/
+*.pyc
