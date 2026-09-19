@@ -1,0 +1,9 @@
+#!/bin/sh
+# accessoryd is long-lived, so it has to be respawned for ElleKit to inject the
+# tweak into it (launchd starts it again on demand).
+if [ -x /var/jb/usr/bin/killall ]; then
+    /var/jb/usr/bin/killall -9 accessoryd 2>/dev/null || true
+else
+    killall -9 accessoryd 2>/dev/null || true
+fi
+exit 0
