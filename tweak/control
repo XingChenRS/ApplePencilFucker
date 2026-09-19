@@ -3,7 +3,7 @@ Name: PencilGen1Compat
 Version: 1.0.0
 Architecture: iphoneos-arm64
 Description: Lets Apple Pencil (1st generation) pair with USB-C iPads by clearing accessoryd's model gate, so the wired out-of-band pairing can hand over a persistent Bluetooth link key.
-Maintainer: <your-name>
-Author: <your-name>
+Maintainer: XingChenRS
+Author: XingChenRS
 Section: Tweaks
 Depends: ellekit
