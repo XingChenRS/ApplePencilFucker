@@ -23,7 +23,7 @@ include $(THEOS_MAKE_PATH)/tweak.mk
 after-stage::
 	@for lib in $$(find "$(THEOS_STAGING_DIR)" -name '$(TWEAK_NAME).dylib'); do \
 		python3 "$(THEOS_PROJECT_DIR)/tools/fix_arm64e_abi.py" "$$lib"; \
-		"$(THEOS)/bin/ldid" -S "$$lib" && echo "  re-signed: $$lib"; \
+		"$(TARGET_CODESIGN)" $(TARGET_CODESIGN_FLAGS) "$$lib" && echo "  re-signed: $$lib"; \
 	done
 
 after-install::
