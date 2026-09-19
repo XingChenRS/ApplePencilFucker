@@ -38,8 +38,17 @@ BOOL isApplePencilGen1Supported(void) {
 
 ## 构建
 
-- 云端（推荐）：`../.github/workflows/build.yml` 已配好 Theos + 缓存，push 后取 artifact。
+- 云端（推荐）：`../.github/workflows/build.yml` 已配好 Theos + 缓存；
+  提交信息里带 `[build]` 或在 Actions 里手动 Run workflow，产物在 run 的 Artifacts 里。
 - 本地：`make package THEOS_PACKAGE_SCHEME=rootless`（需要 Theos + iOS SDK）。
+
+构建时有两处必须保留的处理（都已写进 Makefile）：
+
+1. `after-stage` 用 [tools/fix_arm64e_abi.py](tools/fix_arm64e_abi.py) 把 Linux 工具链产出的
+   arm64e 切片从旧 ABI 重标为 ABI v2，并用 `TARGET_CODESIGN` 重新签名——
+   否则 dyld 会按错误方式修复认证指针，accessoryd 一碰就 SIGBUS。
+2. 比较键在钩子内惰性初始化，不能放到 `%ctor`：两个构造函数之间的顺序由链接器决定，
+   钩子可能先跑。
 
 ## 安装与验证
 
