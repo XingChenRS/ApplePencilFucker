@@ -63,8 +63,7 @@ static CFStringRef gKeyNinePin;      // "DeviceSupports9Pin"
     // into the process that is actually handling the pencil.
     FILE *beacon = fopen("/tmp/PencilGen1Compat.loaded", "w");
     if (beacon) {
-        fprintf(beacon, "pid=%d
-", getpid());
+        fprintf(beacon, "pid=%d\n", getpid());
         fclose(beacon);
     }
 
