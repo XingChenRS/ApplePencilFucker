@@ -3,6 +3,18 @@
 让 **Apple Pencil 1（Lightning / A1603）** 在苹果未列入白名单的 iPad 上完成**有线带外配对**，
 从而拿到一把会持久保存的蓝牙链路密钥（这正是"每次断连都要忽略设备重配"的根因）。
 
+## 状态
+
+已在 iPad Pro 11" (M2) / iPadOS 16.1 上验证：插线不再弹"配件不受支持"，
+**铅笔完成配对并连接成功**。
+
+运行时自检（越狱设备上可直接查看）：
+
+```bash
+cat /tmp/PencilGen1Compat.loaded     # 插件是否注入到了 accessoryd（内容为 pid）
+cat /tmp/PencilGen1Compat.log        # 钩子命中记录（前 32 次调用）
+```
+
 ## 原理
 
 `accessoryd` 在铅笔插上时执行（`0x1000700CC`）：

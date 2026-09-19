@@ -152,6 +152,27 @@ bluetoothd 侧对应能力（字符串证据）：
 
 ---
 
+## 2.5 修复过程（两条独立的坑）
+
+第一版插件（只钩 MG 键）实测：弹窗消失 ✓ 但 accessoryd 连崩两次（SIGBUS），
+铅笔始终不出现在蓝牙列表。逐层定位：
+
+| 现象 | 原因 | 修法 |
+|---|---|---|
+| 切片加载后崩溃、`CFEqual` 内 PAC 失败，地址固定为 `0xdac11a30` | Linux 工具链把 arm64e 切片标成 **ABI v1**（`cpusubtype=0x00000002`，"arm64e.old"），而设备系统进程全是 **ABI v2**（`0x80000002`，`CPU_SUBTYPE_PTRAUTH_ABI`）；dyld 按旧 ABI 做指针认证修复 → 认证指针全坏 | 构建后把 arm64e 切片重标为 ABI v2 并**重新签名**（`tweak/tools/fix_arm64e_abi.py` + `after-stage` 钩子） |
+| 只编 arm64 时插件完全不被注入（无信标、无崩溃） | arm64 切片无法装入 arm64e 系统守护进程 | 恢复 `ARCHS = arm64 arm64e`（配合上一条） |
+| ABI 修好后仍崩在同一处，`CFEqual` 收到坏指针 | 同一镜像内多个构造函数（`%hookf` 的安装器 vs `%ctor`）顺序由链接器决定，钩子先跑时比较键还是 NULL | 比较键改为**惰性初始化** + NULL 防护 |
+
+修复后实测日志（`/tmp/PencilGen1Compat.log`）：
+
+```
+loaded into accessoryd (pid 4251)
+call 3: -> forcing DeviceSupports9Pin = true
+call 9: -> forcing DeviceSupportsApplePencil = true
+```
+
+无任何崩溃报告，**铅笔随即完成配对并连接成功** ✓
+
 ## 3. 已确认 / 待确认
 
 已确认（2026-09-20，用户实测）：
@@ -159,9 +180,9 @@ bluetoothd 侧对应能力（字符串证据）：
 - 插上转接头时 accessoryd 直接弹"配件不受支持"，并跳过带外配对（见 2.0）。
 
 待确认：
-1. 解除 accessoryd 门禁后，带外（iAP2BLEPairing）流程能否完整跑通；铅笔是否从此自动重连。
-2. accessoryd 内 `OOBBTPairing linkKeyInfo: … oobBtPairing2, not supported` 那条分支是否构成第二道门。
-3. type==25 对应的设备类型枚举名（仅影响设置页 UI 路径）。
+1. **断连后能否自动重连**（本项目的最终指标）—— 需要一个完整的"断开→靠近/使用→自动恢复"循环验证。
+2. 重启（含重新越狱）后配对是否仍然有效。
+3. type==25 对应的设备类型枚举名（仅影响设置页 UI 路径，若带外配对已生效通常不再需要）。
 
 ---
 
