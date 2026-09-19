@@ -29,6 +29,11 @@
 #import <Foundation/Foundation.h>
 #import <os/log.h>
 
+// libMobileGestalt (private framework, no public header). Declared here so the
+// Logos hook below has a symbol to reference; the link resolves it at load time
+// because tweaks link with -undefined dynamic_lookup.
+extern Boolean MGGetBoolAnswer(CFStringRef key);
+
 static os_log_t gLog;
 
 static CFStringRef gKeyPencilGate;   // obfuscated MG key guarding the check

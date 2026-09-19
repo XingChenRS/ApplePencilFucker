@@ -7,6 +7,8 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = PencilGen1Compat
 PencilGen1Compat_FILES = Tweak.x
 PencilGen1Compat_CFLAGS = -fobjc-arc
+# MGGetBoolAnswer lives in a private framework, so leave it to the loader.
+PencilGen1Compat_LDFLAGS = -Wl,-undefined,dynamic_lookup
 
 # accessoryd is a long-lived daemon: launchd has to respawn it for the injected
 # dylib to load, both for `make install` and for the generated deb postinst.
