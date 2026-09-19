@@ -57,6 +57,17 @@ static CFStringRef gKeyNinePin;      // "DeviceSupports9Pin"
 %ctor
 {
     gLog = os_log_create("com.xingchenrs.pencilgen1", "tweak");
+
+    // accessoryd is started on demand (launchd matches USB / OOB-pairing
+    // events), so a beacon makes it obvious whether ElleKit injected the tweak
+    // into the process that is actually handling the pencil.
+    FILE *beacon = fopen("/tmp/PencilGen1Compat.loaded", "w");
+    if (beacon) {
+        fprintf(beacon, "pid=%d
+", getpid());
+        fclose(beacon);
+    }
+
     gKeyPencilGate = CFStringCreateWithCString(kCFAllocatorDefault,
                                                "yhHcB0iH0d1XzPO/CFd3ow",
                                                kCFStringEncodingUTF8);
